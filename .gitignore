@@ -4,6 +4,9 @@ node_modules/
 # Variables de entorno (NUNCA subir al repo)
 .env
 
+# Base de datos de usuarios (se genera automáticamente en la VPS)
+users.json
+
 # Logs
 *.log
 logs/

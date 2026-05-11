@@ -1,10 +1,11 @@
 require("dotenv").config();
 const TelegramBot = require("node-telegram-bot-api");
 const path = require("path");
+const { formatNumber, generateOrderId, getPrice } = require("./utils");
 const seguidores_taquitoV1_bot = "seguidores_taquitoV1_bot"; // username exacto de tu bot
 const srtaquito6 = "srtaquito6"; // username del vendedor
-const { formatNumber, generateOrderId, getPrice } = require("./utils");
-const { isAdmin, BOT_USERNAME, SELLER_USERNAME } = require("./config");
+const { isAdmin, ADMIN_ID, LOG_CHANNEL_ID, BOT_USERNAME, SELLER_USERNAME } = require("./config");
+const { checkAndNotify } = require("./notifier");
 const { validateIGLink } = require("./validators");
 const {
   buildOrderMessage,
@@ -57,13 +58,16 @@ bot.onText(/\/start/, async (msg) => {
   const start = Date.now();
   delete igsState[chatId];
 
+  // Notificar al admin solo la primera vez que este usuario usa /start
+  await checkAndNotify(bot, msg, LOG_CHANNEL_ID, isAdmin);
+
   if (isAdmin(userId)) {
     const latency = Date.now() - start;
     await sendPhotoCaption(chatId, buildWelcomeAdmin(username, userId, latency), {
       reply_markup: {
         inline_keyboard: [[
-          { text: "🔄 Volver a comprar", url: `https://t.me/${BOT_USERNAME}` },
-          { text: "👤 Vendedor", url: `https://t.me/${SELLER_USERNAME}` },
+          { text: "🔄 Volver a comprar", url: `https://t.me/${seguidores_taquitoV1_bot}` },
+          { text: "👤 Vendedor", url: `https://t.me/${srtaquito6}` },
         ]],
       },
     });
@@ -145,8 +149,8 @@ bot.on("callback_query", async (query) => {
     await sendPhotoCaption(chatId, buildWelcomeAdmin(username, userId, latency), {
       reply_markup: {
         inline_keyboard: [[
-          { text: "🔄 Volver a comprar", url: `https://t.me/${BOT_USERNAME}` },
-          { text: "👤 Vendedor", url: `https://t.me/${SELLER_USERNAME}` },
+          { text: "🔄 Volver a comprar", url: `https://t.me/${seguidores_taquitoV1_bot}` },
+          { text: "👤 Vendedor", url: `https://t.me/${srtaquito6}` },
         ]],
       },
     });
@@ -258,6 +262,9 @@ bot.on("message", async (msg) => {
     // Guardar IDs y limpiar estado ANTES de borrar
     const allMsgIds = [...state.msgIds];
     delete igsState[chatId];
+
+  // Notificar al admin solo la primera vez que este usuario usa /start
+  await checkAndNotify(bot, msg, LOG_CHANNEL_ID, isAdmin);
 
     // Borrar todos los mensajes del flujo
     for (const id of allMsgIds) {
